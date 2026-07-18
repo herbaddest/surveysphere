@@ -1,6 +1,5 @@
-"use client";
+x"use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -52,37 +51,6 @@ export function AppSidebar() {
   const router = useRouter();
   const isActive = (url: string) =>
     url === "/dashboard" ? path === "/dashboard" : path.startsWith(url);
-
-  const [profile, setProfile] = useState<{
-    first_name: string | null;
-    last_name: string | null;
-    membership: string | null;
-  } | null>(null);
-
-  useEffect(() => {
-    const supabase = createClient();
-    async function load() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data } = await supabase
-        .from("profiles")
-        .select("first_name, last_name, membership")
-        .eq("id", user.id)
-        .single();
-
-      setProfile(data);
-    }
-    load();
-  }, []);
-
-  const fullName =
-    [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Member";
-  const initials =
-    [profile?.first_name?.[0], profile?.last_name?.[0]].filter(Boolean).join("").toUpperCase() ||
-    "?";
 
   return (
     <Sidebar collapsible="icon">
@@ -146,14 +114,12 @@ export function AppSidebar() {
         <div className="flex items-center gap-2 px-2 py-1.5">
           <Avatar className="h-8 w-8">
             <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-xs font-semibold text-primary-foreground">
-              {initials}
+              AM
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <p className="truncate text-sm font-medium text-foreground">{fullName}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {profile?.membership ? `${profile.membership} member` : ""}
-            </p>
+            <p className="truncate text-sm font-medium text-foreground">Alex Morgan</p>
+            <p className="truncate text-xs text-muted-foreground">Gold member</p>
           </div>
         </div>
       </SidebarFooter>
