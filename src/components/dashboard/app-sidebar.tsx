@@ -15,6 +15,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
 import {
   Sidebar,
   SidebarContent,
@@ -93,9 +94,12 @@ export function AppSidebar() {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   tooltip="Logout"
-                  onClick={() => {
+                  onClick={async () => {
+                    const supabase = createClient();
+                    await supabase.auth.signOut();
                     toast.success("Signed out");
                     router.push("/");
+                    router.refresh();
                   }}
                 >
                   <LogOut className="h-4 w-4" />

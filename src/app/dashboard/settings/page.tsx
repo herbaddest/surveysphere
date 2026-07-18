@@ -1,13 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Check, Crown, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
+import { plans, type Membership } from "@/lib/mock-data";
+import { createClient } from "@/lib/supabase/client";
 import {
   Select,
   SelectContent,
@@ -32,10 +37,126 @@ export default function SettingsPage() {
   const [emailNotif, setEmailNotif] = useState(true);
   const [pushNotif, setPushNotif] = useState(false);
   const [marketing, setMarketing] = useState(false);
+  const [membership, setMembership] = useState<Membership | null>(null);
+  const [switching, setSwitching] = useState<Membership | null>(null);
+  const [loadingMembership, setLoadingMembership] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    async function load() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setLoadingMembership(false);
+        return;
+      }
+      const { data } = await supabase
+        .from("profiles")
+        .select("membership")
+        .eq("id", user.id)
+        .single();
+
+      if (data) setMembership(data.membership as Membership);
+      setLoadingMembership(false);
+    }
+
+    load();
+  }, []);
+
+  async function handleSwitch(plan: Membership) {
+    setSwitching(plan);
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      toast.error("You need to be signed in");
+      setSwitching(null);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ membership: plan })
+      .eq("id", user.id);
+
+    setSwitching(null);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    setMembership(plan);
+    toast.success(`Switched to ${plan}`);
+  }
 
   return (
     <div className="space-y-6">
       <PageHeader title="Settings" description="Preferences, notifications, and account controls." />
+
+      <Card className="border-border/60">
+        <CardHeader>
+          <CardTitle className="text-base">Membership</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Payments aren't wired up yet — plan changes are free during beta.
+          </p>
+          {loadingMembership ? (
+            <div className="flex items-center justify-center py-10 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {plans.map((p) => {
+                const current = membership === p.name;
+                return (
+                  <div
+                    key={p.name}
+                    className={cn(
+                      "flex flex-col rounded-xl border p-4",
+                      current ? "border-primary/60 bg-primary/10" : "border-border/60 bg-white/[0.02]",
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-foreground">{p.name}</p>
+                      {current && (
+                        <Badge className="gap-1 bg-primary/20 text-accent">
+                          <Crown className="h-3 w-3" /> Current
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {p.surveyLimit} · {p.multiplier} rewards
+                    </p>
+                    <Button
+                      size="sm"
+                      variant={current ? "secondary" : "default"}
+                      disabled={current || switching !== null}
+                      className="mt-4"
+                      onClick={() => handleSwitch(p.name)}
+                    >
+                      {switching === p.name ? (
+                        "Switching…"
+                      ) : current ? (
+                        <>
+                          <Check className="mr-1 h-3.5 w-3.5" /> Active
+                        </>
+                      ) : (
+                        `Switch to ${p.name}`
+                      )}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="border-border/60">
         <CardHeader>
@@ -97,7 +218,9 @@ export default function SettingsPage() {
             <Input id="pw-new" type="password" />
           </div>
           <div className="sm:col-span-2">
-            <Button onClick={() => toast.success("Password updated")}>Update password</Button>
+            <Button onClick={() => toast.info("Password change isn't wired up yet — coming soon")}>
+              Update password
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -128,7 +251,7 @@ export default function SettingsPage() {
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  onClick={() => toast.success("Account deletion requested")}
+                  onClick={() => toast.info("Account deletion isn't wired up yet — coming soon")}
                 >
                   Yes, delete
                 </AlertDialogAction>

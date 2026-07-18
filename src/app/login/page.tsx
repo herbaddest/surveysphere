@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,18 +30,30 @@ export default function LoginPage() {
     >
       <form
         className="space-y-4"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
+          const formData = new FormData(e.currentTarget);
+          const email = formData.get("email") as string;
+          const password = formData.get("password") as string;
+
           setLoading(true);
-          setTimeout(() => {
-            toast.success("Welcome back");
-            router.push("/dashboard");
-          }, 600);
+          const supabase = createClient();
+          const { error } = await supabase.auth.signInWithPassword({ email, password });
+          setLoading(false);
+
+          if (error) {
+            toast.error(error.message);
+            return;
+          }
+
+          toast.success("Welcome back");
+          router.push("/dashboard");
+          router.refresh();
         }}
       >
         <div className="space-y-1.5">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" placeholder="you@company.com" required />
+          <Input id="email" name="email" type="email" placeholder="you@company.com" required />
         </div>
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
@@ -49,7 +62,7 @@ export default function LoginPage() {
               Forgot?
             </Link>
           </div>
-          <Input id="password" type="password" required />
+          <Input id="password" name="password" type="password" required />
         </div>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           <Checkbox id="remember" />
@@ -62,3 +75,4 @@ export default function LoginPage() {
     </AuthShell>
   );
 }
+

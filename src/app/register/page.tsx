@@ -17,11 +17,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { countries } from "@/lib/mock-data";
+import { createClient } from "@/lib/supabase/client";
 
 export default function RegisterPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [agree, setAgree] = useState(false);
+  const [country, setCountry] = useState("");
 
   return (
     <AuthShell
@@ -38,36 +40,70 @@ export default function RegisterPage() {
     >
       <form
         className="space-y-4"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
           if (!agree) {
             toast.error("Please accept the terms to continue");
             return;
           }
+
+          const formData = new FormData(e.currentTarget);
+          const password = formData.get("password") as string;
+          const confirm = formData.get("confirm") as string;
+          if (password !== confirm) {
+            toast.error("Passwords don't match");
+            return;
+          }
+
+          const email = formData.get("email") as string;
+          const first = formData.get("first") as string;
+          const last = formData.get("last") as string;
+          const username = formData.get("username") as string;
+          const referral = formData.get("referral") as string;
+
           setLoading(true);
-          setTimeout(() => {
-            toast.success("Account created. Please verify your email.");
-            router.push("/verify-email");
-          }, 700);
+          const supabase = createClient();
+          const { error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                first_name: first,
+                last_name: last,
+                username,
+                country,
+                referral_code: referral || null,
+              },
+            },
+          });
+          setLoading(false);
+
+          if (error) {
+            toast.error(error.message);
+            return;
+          }
+
+          toast.success("Account created. Please verify your email.");
+          router.push("/verify-email");
         }}
       >
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="first">First name</Label>
-            <Input id="first" required />
+            <Input id="first" name="first" required />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="last">Last name</Label>
-            <Input id="last" required />
+            <Input id="last" name="last" required />
           </div>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="username">Username</Label>
-          <Input id="username" required />
+          <Input id="username" name="username" required />
         </div>
         <div className="space-y-1.5">
           <Label>Country</Label>
-          <Select>
+          <Select value={country} onValueChange={setCountry} required>
             <SelectTrigger>
               <SelectValue placeholder="Select your country" />
             </SelectTrigger>
@@ -82,23 +118,23 @@ export default function RegisterPage() {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" required />
+          <Input id="email" name="email" type="email" required />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" required />
+            <Input id="password" name="password" type="password" minLength={6} required />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="confirm">Confirm</Label>
-            <Input id="confirm" type="password" required />
+            <Input id="confirm" name="confirm" type="password" minLength={6} required />
           </div>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="referral">
             Referral code <span className="text-muted-foreground">(optional)</span>
           </Label>
-          <Input id="referral" placeholder="e.g. ANYA-2026" />
+          <Input id="referral" name="referral" placeholder="e.g. ANYA-2026" />
         </div>
         <label className="flex items-start gap-2 text-sm text-muted-foreground">
           <Checkbox
@@ -126,3 +162,4 @@ export default function RegisterPage() {
     </AuthShell>
   );
 }
+
