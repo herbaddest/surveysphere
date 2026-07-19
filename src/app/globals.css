@@ -72,7 +72,10 @@
 
 :root {
   --radius: 0.75rem;
+}
 
+/* Dark theme (default) */
+.dark {
   /* Deep navy canvas #0F172A */
   --background: oklch(0.204 0.041 264);
   --foreground: oklch(0.985 0.005 240);
@@ -127,11 +130,66 @@
   --sidebar-accent-foreground: oklch(0.985 0.005 240);
   --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.64 0.19 258);
+
+  color-scheme: dark;
 }
 
-.dark {
-  --background: oklch(0.204 0.041 264);
-  --foreground: oklch(0.985 0.005 240);
+/* Light theme */
+.light {
+  --background: oklch(0.99 0.003 240);
+  --foreground: oklch(0.204 0.041 264);
+
+  --surface: oklch(0.985 0.004 240);
+  --surface-elevated: oklch(0.96 0.006 250);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.204 0.041 264);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.204 0.041 264);
+
+  /* Same cobalt brand primary, still high contrast on white */
+  --primary: oklch(0.548 0.221 261);
+  --primary-foreground: oklch(0.99 0.005 240);
+  --primary-glow: oklch(0.64 0.19 258);
+
+  --secondary: oklch(0.94 0.01 260);
+  --secondary-foreground: oklch(0.204 0.041 264);
+
+  --muted: oklch(0.94 0.01 260);
+  --muted-foreground: oklch(0.48 0.02 258);
+
+  /* Deepened sky accent for AA contrast on white */
+  --accent: oklch(0.55 0.145 227);
+  --accent-foreground: oklch(0.99 0 0);
+
+  --destructive: oklch(0.55 0.22 22);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.5 0.15 156);
+  --success-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.62 0.16 82);
+  --warning-foreground: oklch(0.2 0.04 60);
+
+  --border: oklch(0 0 0 / 10%);
+  --input: oklch(0 0 0 / 12%);
+  --ring: oklch(0.548 0.221 261);
+
+  --chart-1: oklch(0.548 0.221 261);
+  --chart-2: oklch(0.55 0.145 227);
+  --chart-3: oklch(0.5 0.15 156);
+  --chart-4: oklch(0.62 0.16 82);
+  --chart-5: oklch(0.55 0.18 300);
+
+  --sidebar: oklch(0.985 0.004 240);
+  --sidebar-foreground: oklch(0.25 0.03 264);
+  --sidebar-primary: oklch(0.548 0.221 261);
+  --sidebar-primary-foreground: oklch(0.99 0.005 240);
+  --sidebar-accent: oklch(0.94 0.01 260);
+  --sidebar-accent-foreground: oklch(0.204 0.041 264);
+  --sidebar-border: oklch(0 0 0 / 10%);
+  --sidebar-ring: oklch(0.548 0.221 261);
+
+  color-scheme: light;
 }
 
 @utility glass {
@@ -169,9 +227,6 @@
 @layer base {
   * {
     border-color: var(--color-border);
-  }
-  html {
-    color-scheme: dark;
   }
   body {
     background-color: var(--color-background);

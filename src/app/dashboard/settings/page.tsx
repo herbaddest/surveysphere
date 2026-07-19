@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Check, Crown, Loader2 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -33,13 +34,19 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function SettingsPage() {
-  const [dark, setDark] = useState(true);
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [emailNotif, setEmailNotif] = useState(true);
   const [pushNotif, setPushNotif] = useState(false);
   const [marketing, setMarketing] = useState(false);
   const [membership, setMembership] = useState<Membership | null>(null);
   const [switching, setSwitching] = useState<Membership | null>(null);
   const [loadingMembership, setLoadingMembership] = useState(true);
+
+  // Avoid hydration mismatch: theme isn't known until mounted on the client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
@@ -163,11 +170,12 @@ export default function SettingsPage() {
           <CardTitle className="text-base">Appearance</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Row
-            title="Dark mode"
-            description="SurveySphere is optimized for dark. Light mode coming soon."
-          >
-            <Switch checked={dark} onCheckedChange={setDark} disabled />
+          <Row title="Dark mode" description="Switch between light and dark theme">
+            <Switch
+              checked={mounted ? resolvedTheme === "dark" : true}
+              onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+              disabled={!mounted}
+            />
           </Row>
           <Row title="Language" description="Interface language">
             <Select defaultValue="en">
