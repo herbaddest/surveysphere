@@ -35,12 +35,19 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+interface NotificationPrefs {
+  email: boolean;
+  push: boolean;
+  marketing: boolean;
+}
+
+const defaultPrefs: NotificationPrefs = { email: true, push: false, marketing: false };
+
 export default function SettingsPage() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [emailNotif, setEmailNotif] = useState(true);
-  const [pushNotif, setPushNotif] = useState(false);
-  const [marketing, setMarketing] = useState(false);
+  const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>(defaultPrefs);
+  const [language, setLanguage] = useState("en");
   const [membership, setMembership] = useState<Membership | null>(null);
   const [switching, setSwitching] = useState<Membership | null>(null);
   const [loadingMembership, setLoadingMembership] = useState(true);
@@ -65,11 +72,15 @@ export default function SettingsPage() {
       }
       const { data } = await supabase
         .from("profiles")
-        .select("membership")
+        .select("membership, notification_preferences, language")
         .eq("id", user.id)
         .single();
 
-      if (data) setMembership(data.membership as Membership);
+      if (data) {
+        setMembership(data.membership as Membership);
+        setNotifPrefs({ ...defaultPrefs, ...(data.notification_preferences ?? {}) });
+        setLanguage(data.language ?? "en");
+      }
       setLoadingMembership(false);
     }
 
@@ -103,6 +114,58 @@ export default function SettingsPage() {
 
     setMembership(plan);
     toast.success(`Switched to ${plan}`);
+  }
+
+  async function updateNotifPref(key: keyof NotificationPrefs, value: boolean) {
+    const next = { ...notifPrefs, [key]: value };
+    setNotifPrefs(next); // optimistic
+
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("You need to be signed in");
+      setNotifPrefs(notifPrefs); // revert
+      return;
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ notification_preferences: next })
+      .eq("id", user.id);
+
+    if (error) {
+      toast.error(error.message);
+      setNotifPrefs(notifPrefs); // revert on failure
+    }
+  }
+
+  async function updateLanguage(value: string) {
+    const previous = language;
+    setLanguage(value); // optimistic
+
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("You need to be signed in");
+      setLanguage(previous);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ language: value })
+      .eq("id", user.id);
+
+    if (error) {
+      toast.error(error.message);
+      setLanguage(previous);
+    } else {
+      toast.success("Language preference saved");
+    }
   }
 
   return (
@@ -182,7 +245,7 @@ export default function SettingsPage() {
             />
           </Row>
           <Row title="Language" description="Interface language">
-            <Select defaultValue="en">
+            <Select value={language} onValueChange={updateLanguage}>
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
@@ -205,13 +268,22 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <Row title="Email notifications" description="Rewards, withdrawals, and account alerts">
-            <Switch checked={emailNotif} onCheckedChange={setEmailNotif} />
+            <Switch
+              checked={notifPrefs.email}
+              onCheckedChange={(v) => updateNotifPref("email", v)}
+            />
           </Row>
           <Row title="Push notifications" description="Real-time alerts to your device">
-            <Switch checked={pushNotif} onCheckedChange={setPushNotif} />
+            <Switch
+              checked={notifPrefs.push}
+              onCheckedChange={(v) => updateNotifPref("push", v)}
+            />
           </Row>
           <Row title="Marketing updates" description="Occasional platform news and offers">
-            <Switch checked={marketing} onCheckedChange={setMarketing} />
+            <Switch
+              checked={notifPrefs.marketing}
+              onCheckedChange={(v) => updateNotifPref("marketing", v)}
+            />
           </Row>
         </CardContent>
       </Card>
