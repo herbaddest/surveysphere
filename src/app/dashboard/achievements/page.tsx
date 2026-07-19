@@ -1,13 +1,127 @@
 "use client";
 
-import { Trophy } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Trophy, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { achievements } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
+
+interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  progress: number;
+  target: number;
+}
 
 export default function AchievementsPage() {
+  const [loading, setLoading] = useState(true);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    async function load() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const [{ count: completionsCount }, { data: completions }, { data: earnTxns }, { data: referredCount }] =
+        await Promise.all([
+          supabase
+            .from("survey_completions")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", user.id),
+          supabase
+            .from("survey_completions")
+            .select("survey_id, surveys(category)")
+            .eq("user_id", user.id),
+          supabase
+            .from("transactions")
+            .select("amount")
+            .eq("user_id", user.id)
+            .eq("type", "earn"),
+          supabase.rpc("get_referred_count", { p_user_id: user.id }),
+        ]);
+
+      const totalCompleted = completionsCount ?? 0;
+
+      const distinctCategories = new Set(
+        (completions ?? [])
+          .map((c: { surveys: { category: string } | { category: string }[] | null }) => {
+            const s = Array.isArray(c.surveys) ? c.surveys[0] : c.surveys;
+            return s?.category;
+          })
+          .filter(Boolean),
+      ).size;
+
+      const totalEarned = (earnTxns ?? []).reduce((sum, t) => sum + t.amount, 0);
+
+      setAchievements([
+        {
+          id: "a1",
+          name: "First Step",
+          description: "Complete your first survey",
+          progress: Math.min(totalCompleted, 1),
+          target: 1,
+        },
+        {
+          id: "a2",
+          name: "Consistent Voice",
+          description: "Complete 25 surveys",
+          progress: totalCompleted,
+          target: 25,
+        },
+        {
+          id: "a3",
+          name: "Century Club",
+          description: "Complete 100 surveys",
+          progress: totalCompleted,
+          target: 100,
+        },
+        {
+          id: "a4",
+          name: "Ambassador",
+          description: "Invite 10 friends",
+          progress: referredCount ?? 0,
+          target: 10,
+        },
+        {
+          id: "a5",
+          name: "High Earner",
+          description: "Earn $500 in rewards",
+          progress: Math.round(totalEarned),
+          target: 500,
+        },
+        {
+          id: "a6",
+          name: "Globetrotter",
+          description: "Complete surveys from 5 categories",
+          progress: distinctCategories,
+          target: 5,
+        },
+      ]);
+
+      setLoading(false);
+    }
+
+    load();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
