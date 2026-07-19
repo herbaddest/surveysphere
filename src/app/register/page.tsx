@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   Select,
   SelectContent,
@@ -65,10 +66,11 @@ export default function RegisterPage() {
 
           setLoading(true);
           const supabase = createClient();
-          const { error } = await supabase.auth.signUp({
+          const { data, error } = await supabase.auth.signUp({
             email,
             password,
             options: {
+              emailRedirectTo: `${window.location.origin}/dashboard`,
               data: {
                 first_name: first,
                 last_name: last,
@@ -85,8 +87,18 @@ export default function RegisterPage() {
             return;
           }
 
-          toast.success("Account created. Please verify your email.");
-          router.push("/verify-email");
+          // If email confirmations are OFF, signUp() returns an active session
+          // immediately — go straight to the dashboard instead of a verify-email
+          // screen that will never resolve. If confirmations are ON, there's no
+          // session yet, so send them to verify their inbox as before.
+          if (data.session) {
+            toast.success("Account created");
+            router.push("/dashboard");
+            router.refresh();
+          } else {
+            toast.success("Account created. Please verify your email.");
+            router.push("/verify-email");
+          }
         }}
       >
         <div className="grid grid-cols-2 gap-3">
@@ -125,11 +137,11 @@ export default function RegisterPage() {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" minLength={6} required />
+            <PasswordInput id="password" name="password" minLength={6} required />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="confirm">Confirm</Label>
-            <Input id="confirm" name="confirm" type="password" minLength={6} required />
+            <PasswordInput id="confirm" name="confirm" minLength={6} required />
           </div>
         </div>
         <div className="space-y-1.5">

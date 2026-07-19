@@ -7,9 +7,11 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   return (
     <AuthShell
@@ -36,18 +38,32 @@ export default function ForgotPasswordPage() {
       ) : (
         <form
           className="space-y-4"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
+            const formData = new FormData(e.currentTarget);
+            const email = formData.get("email") as string;
+
+            setLoading(true);
+            const supabase = createClient();
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+              redirectTo: `${window.location.origin}/reset-password`,
+            });
+            setLoading(false);
+
+            if (error) {
+              toast.error(error.message);
+              return;
+            }
+
             setSent(true);
-            toast.success("Reset link sent");
           }}
         >
           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" required />
+            <Input id="email" name="email" type="email" required />
           </div>
-          <Button type="submit" className="w-full">
-            Send reset link
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Sending…" : "Send reset link"}
           </Button>
         </form>
       )}

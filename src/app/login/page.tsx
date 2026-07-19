@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { createClient } from "@/lib/supabase/client";
@@ -33,11 +34,26 @@ export default function LoginPage() {
         onSubmit={async (e) => {
           e.preventDefault();
           const formData = new FormData(e.currentTarget);
-          const email = formData.get("email") as string;
+          const identifier = (formData.get("identifier") as string).trim();
           const password = formData.get("password") as string;
 
           setLoading(true);
           const supabase = createClient();
+
+          let email = identifier;
+          if (!identifier.includes("@")) {
+            const { data: resolvedEmail, error: lookupError } = await supabase.rpc(
+              "get_email_by_username",
+              { p_username: identifier },
+            );
+            if (lookupError || !resolvedEmail) {
+              setLoading(false);
+              toast.error("Invalid email/username or password");
+              return;
+            }
+            email = resolvedEmail;
+          }
+
           const { error } = await supabase.auth.signInWithPassword({ email, password });
           setLoading(false);
 
@@ -52,8 +68,13 @@ export default function LoginPage() {
         }}
       >
         <div className="space-y-1.5">
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" placeholder="you@company.com" required />
+          <Label htmlFor="identifier">Email or username</Label>
+          <Input
+            id="identifier"
+            name="identifier"
+            placeholder="you@company.com or username"
+            required
+          />
         </div>
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
@@ -62,7 +83,7 @@ export default function LoginPage() {
               Forgot?
             </Link>
           </div>
-          <Input id="password" name="password" type="password" required />
+          <PasswordInput id="password" name="password" required />
         </div>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           <Checkbox id="remember" />
@@ -75,4 +96,3 @@ export default function LoginPage() {
     </AuthShell>
   );
 }
-

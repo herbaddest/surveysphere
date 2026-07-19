@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Crown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -27,7 +28,6 @@ interface Profile {
   username: string | null;
   country: string | null;
   membership: string;
-  avatar_url: string | null;
 }
 
 interface PaymentDetails {
@@ -39,21 +39,16 @@ interface PaymentDetails {
 
 const emptyPaymentDetails: PaymentDetails = { paypal: "", wise: "", usdt: "", iban: "" };
 
-const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // 2MB
-const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
-
 export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [email, setEmail] = useState("");
-  const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile>({
     first_name: "",
     last_name: "",
     username: "",
     country: "",
     membership: "Bronze",
-    avatar_url: null,
   });
 
   const [currentPassword, setCurrentPassword] = useState("");
@@ -62,9 +57,6 @@ export default function ProfilePage() {
 
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>(emptyPaymentDetails);
   const [savingPayment, setSavingPayment] = useState(false);
-
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -78,11 +70,10 @@ export default function ProfilePage() {
         return;
       }
       setEmail(user.email ?? "");
-      setUserId(user.id);
 
       const { data } = await supabase
         .from("profiles")
-        .select("first_name, last_name, username, country, membership, payment_details, avatar_url")
+        .select("first_name, last_name, username, country, membership, payment_details")
         .eq("id", user.id)
         .single();
 
@@ -197,59 +188,6 @@ export default function ProfilePage() {
     toast.success("Payment details saved");
   }
 
-  async function handleAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-selecting the same file later
-    if (!file || !userId) return;
-
-    if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
-      toast.error("Please upload a JPG, PNG, or WEBP image");
-      return;
-    }
-    if (file.size > MAX_AVATAR_BYTES) {
-      toast.error("Image must be under 2MB");
-      return;
-    }
-
-    setUploadingAvatar(true);
-    const supabase = createClient();
-
-    const ext = file.name.split(".").pop();
-    const path = `${userId}/avatar.${ext}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(path, file, { upsert: true, cacheControl: "3600" });
-
-    if (uploadError) {
-      setUploadingAvatar(false);
-      toast.error(uploadError.message);
-      return;
-    }
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("avatars").getPublicUrl(path);
-
-    // cache-bust so the new image shows immediately even with the same filename
-    const bustedUrl = `${publicUrl}?t=${Date.now()}`;
-
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({ avatar_url: bustedUrl })
-      .eq("id", userId);
-
-    setUploadingAvatar(false);
-
-    if (updateError) {
-      toast.error(updateError.message);
-      return;
-    }
-
-    setProfile((p) => ({ ...p, avatar_url: bustedUrl }));
-    toast.success("Avatar updated");
-  }
-
   const initials =
     `${profile.first_name?.[0] ?? ""}${profile.last_name?.[0] ?? ""}`.toUpperCase() || "?";
 
@@ -271,7 +209,6 @@ export default function ProfilePage() {
       <Card className="border-border/60">
         <CardContent className="flex flex-col items-start gap-6 p-6 sm:flex-row sm:items-center">
           <Avatar className="h-20 w-20">
-            {profile.avatar_url && <AvatarImage src={profile.avatar_url} alt="Avatar" />}
             <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-lg font-semibold text-primary-foreground">
               {initials}
             </AvatarFallback>
@@ -295,20 +232,7 @@ export default function ProfilePage() {
               </Button>
             </div>
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            onChange={handleAvatarFileChange}
-          />
-          <Button
-            variant="secondary"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadingAvatar}
-          >
-            {uploadingAvatar ? "Uploading…" : "Change avatar"}
-          </Button>
+          <Button variant="secondary">Change avatar</Button>
         </CardContent>
       </Card>
 
@@ -429,21 +353,20 @@ export default function ProfilePage() {
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="current">Current password</Label>
-            <Input
+            <PasswordInput
               id="current"
-              type="password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
             />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="new">New password</Label>
-            <Input
+            <PasswordInput
               id="new"
-              type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
             />
+    
           </div>
           <div className="sm:col-span-2">
             <Button onClick={handlePasswordChange} disabled={changingPassword}>

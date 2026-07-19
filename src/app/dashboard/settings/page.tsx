@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Check, Crown, Loader2 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -8,6 +9,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -42,6 +44,8 @@ export default function SettingsPage() {
   const [membership, setMembership] = useState<Membership | null>(null);
   const [switching, setSwitching] = useState<Membership | null>(null);
   const [loadingMembership, setLoadingMembership] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+  const router = useRouter();
 
   // Avoid hydration mismatch: theme isn't known until mounted on the client
   useEffect(() => {
@@ -219,11 +223,11 @@ export default function SettingsPage() {
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="pw-current">Current password</Label>
-            <Input id="pw-current" type="password" />
+            <PasswordInput id="pw-current" />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="pw-new">New password</Label>
-            <Input id="pw-new" type="password" />
+            <PasswordInput id="pw-new" />
           </div>
           <div className="sm:col-span-2">
             <Button onClick={() => toast.info("Password change isn't wired up yet — coming soon")}>
@@ -259,9 +263,25 @@ export default function SettingsPage() {
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  onClick={() => toast.info("Account deletion isn't wired up yet — coming soon")}
+                  disabled={deleting}
+                  onClick={async () => {
+                    setDeleting(true);
+                    const res = await fetch("/api/delete-account", { method: "POST" });
+                    setDeleting(false);
+
+                    if (!res.ok) {
+                      toast.error("Couldn't delete account — try again");
+                      return;
+                    }
+
+                    const supabase = createClient();
+                    await supabase.auth.signOut();
+                    toast.success("Account deleted");
+                    router.push("/");
+                    router.refresh();
+                  }}
                 >
-                  Yes, delete
+                  {deleting ? "Deleting…" : "Yes, delete"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
