@@ -1,5 +1,11 @@
 import Link from "next/link";
+import { Mail, MessageCircle } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
+
+const SUPPORT_EMAIL = "supportsurveysphere@gmail.com";
+// WhatsApp number in international format, digits only, no + or spaces
+const SUPPORT_WHATSAPP = "447853158921";
+const SUPPORT_WHATSAPP_DISPLAY = "+44 7853 158921";
 
 const cols = [
   {
@@ -17,7 +23,7 @@ const cols = [
       { label: "About", href: "#" },
       { label: "Careers", href: "#" },
       { label: "Press", href: "#" },
-      { label: "Contact", href: "#" },
+      { label: "Contact", href: `mailto:${SUPPORT_EMAIL}` },
     ],
   },
   {
@@ -41,6 +47,24 @@ export function Footer() {
             <p className="mt-4 max-w-xs text-sm text-muted-foreground">
               A premium survey platform. Share your opinions. Earn real rewards.
             </p>
+            <div className="mt-5 space-y-2">
+              <a
+                href={`mailto:${SUPPORT_EMAIL}`}
+                className="flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground"
+              >
+                <Mail className="h-3.5 w-3.5" />
+                {SUPPORT_EMAIL}
+              </a>
+              <a
+                href={`https://wa.me/${SUPPORT_WHATSAPP}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                {SUPPORT_WHATSAPP_DISPLAY} (WhatsApp)
+              </a>
+            </div>
           </div>
           {cols.map((c) => (
             <div key={c.title}>
