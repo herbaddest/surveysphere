@@ -1,4 +1,4 @@
-export type Membership = "Bronze" | "Silver" | "Gold" | "Platinum";
+export type Membership = "Bronze" | "Silver" | "Gold" | "Platinum" | "Diamond";
 
 export interface Plan {
   name: Membership;
@@ -14,54 +14,67 @@ export const plans: Plan[] = [
   {
     name: "Bronze",
     price: 0,
-    surveyLimit: "10 / day",
+    surveyLimit: "2 / day",
     multiplier: "1.0x",
     priority: "Standard queue",
     benefits: [
-      "Access to standard surveys",
-      "Weekly withdrawals",
+      "Access to low-paying surveys only",
+      "Withdrawals unlock after 20 completed surveys",
       "Community support",
       "Basic analytics",
     ],
   },
   {
     name: "Silver",
-    price: 12,
-    surveyLimit: "30 / day",
-    multiplier: "1.4x",
+    price: 29,
+    surveyLimit: "10 / day",
+    multiplier: "1.3x",
     priority: "Priority queue",
     benefits: [
       "All Bronze benefits",
       "Higher paying surveys",
-      "Bi-weekly bonuses",
+      "Withdrawals unlock after 10 completed surveys",
       "Faster reward crediting",
     ],
   },
   {
     name: "Gold",
-    price: 29,
-    surveyLimit: "80 / day",
+    price: 59,
+    surveyLimit: "25 / day",
     multiplier: "1.8x",
     priority: "Fast lane",
     benefits: [
       "All Silver benefits",
       "Exclusive brand studies",
-      "Instant withdrawals",
+      "Withdrawals unlock after 5 completed surveys",
       "Dedicated support",
     ],
     featured: true,
   },
   {
     name: "Platinum",
-    price: 59,
-    surveyLimit: "Unlimited",
+    price: 99,
+    surveyLimit: "50 / day",
     multiplier: "2.5x",
     priority: "White-glove",
     benefits: [
       "All Gold benefits",
       "VIP research panels",
-      "2.5x reward multiplier",
+      "Instant withdrawals — no completion requirement",
       "Personal account manager",
+    ],
+  },
+  {
+    name: "Diamond",
+    price: 119,
+    surveyLimit: "Unlimited",
+    multiplier: "3.5x",
+    priority: "Top priority",
+    benefits: [
+      "All Platinum benefits",
+      "Unlimited daily surveys",
+      "Instant withdrawals — no completion requirement",
+      "3.5x reward multiplier",
     ],
   },
 ];

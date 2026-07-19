@@ -14,8 +14,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 
-type Membership = "Bronze" | "Silver" | "Gold" | "Platinum";
-const TIER_ORDER: Record<Membership, number> = { Bronze: 0, Silver: 1, Gold: 2, Platinum: 3 };
+type Membership = "Bronze" | "Silver" | "Gold" | "Platinum" | "Diamond";
+const TIER_ORDER: Record<Membership, number> = { Bronze: 0, Silver: 1, Gold: 2, Platinum: 3, Diamond: 4 };
 
 interface Survey {
   id: string;

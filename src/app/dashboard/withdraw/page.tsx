@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Loader2, Lock } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 
 const methods = [
   { id: "paypal", name: "PayPal", detail: "Instant · 0 fees" },
@@ -31,10 +34,65 @@ const history = [
   { id: "w3", date: "2026-06-10", method: "USDT", amount: 80.0, status: "Completed" as const },
 ];
 
+// Mirrors public.tier_withdrawal_gate() in the DB — lifetime completions required to unlock withdrawals
+const WITHDRAWAL_GATE: Record<string, number> = {
+  Bronze: 20,
+  Silver: 10,
+  Gold: 5,
+  Platinum: 0,
+  Diamond: 0,
+};
+
 export default function WithdrawPage() {
   const [method, setMethod] = useState("paypal");
   const [amount, setAmount] = useState("");
   const [details, setDetails] = useState("");
+
+  const [loading, setLoading] = useState(true);
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [membership, setMembership] = useState("Bronze");
+  const [completedCount, setCompletedCount] = useState(0);
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    async function load() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const [{ data: profile }, { count }] = await Promise.all([
+        supabase.from("profiles").select("wallet_balance, membership").eq("id", user.id).single(),
+        supabase
+          .from("survey_completions")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id),
+      ]);
+
+      setWalletBalance(profile?.wallet_balance ?? 0);
+      setMembership(profile?.membership ?? "Bronze");
+      setCompletedCount(count ?? 0);
+      setLoading(false);
+    }
+
+    load();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+      </div>
+    );
+  }
+
+  const gate = WITHDRAWAL_GATE[membership] ?? 999999;
+  const remaining = Math.max(0, gate - completedCount);
+  const locked = remaining > 0;
 
   return (
     <div className="space-y-6">
@@ -49,70 +107,102 @@ export default function WithdrawPage() {
             <CardTitle className="text-base">Request a withdrawal</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label>Method</Label>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {methods.map((m) => {
-                  const selected = method === m.id;
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setMethod(m.id)}
-                      className={cn(
-                        "rounded-xl border p-4 text-left transition",
-                        selected
-                          ? "border-primary/60 bg-primary/10"
-                          : "border-border/60 bg-white/[0.02] hover:border-primary/30",
-                      )}
-                    >
-                      <p className="text-sm font-medium text-foreground">{m.name}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{m.detail}</p>
-                    </button>
-                  );
-                })}
+            {locked ? (
+              <div className="rounded-xl border border-warning/30 bg-warning/10 p-6 text-center">
+                <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-warning/15 text-warning ring-1 ring-inset ring-warning/30">
+                  <Lock className="h-5 w-5" />
+                </div>
+                <h3 className="mt-4 text-sm font-semibold text-foreground">
+                  Withdrawals locked on {membership}
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Complete {remaining} more survey{remaining === 1 ? "" : "s"} to unlock
+                  withdrawals, or upgrade your plan for instant access.
+                </p>
+                <div className="mx-auto mt-4 max-w-xs">
+                  <Progress value={(completedCount / gate) * 100} className="h-1.5" />
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    {completedCount} / {gate} surveys completed
+                  </p>
+                </div>
+                <Button className="mt-5" variant="secondary" size="sm" asChild>
+                  <a href="/dashboard/settings">Upgrade plan</a>
+                </Button>
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label>Method</Label>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {methods.map((m) => {
+                      const selected = method === m.id;
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setMethod(m.id)}
+                          className={cn(
+                            "rounded-xl border p-4 text-left transition",
+                            selected
+                              ? "border-primary/60 bg-primary/10"
+                              : "border-border/60 bg-white/[0.02] hover:border-primary/30",
+                          )}
+                        >
+                          <p className="text-sm font-medium text-foreground">{m.name}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{m.detail}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="amount">Amount (USD)</Label>
-                <Input
-                  id="amount"
-                  inputMode="decimal"
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">Available: $217.45 · Minimum $10</p>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="details">Account details</Label>
-                <Input
-                  id="details"
-                  placeholder={
-                    method === "usdt" ? "Wallet address" : "Email or account number"
-                  }
-                  value={details}
-                  onChange={(e) => setDetails(e.target.value)}
-                />
-              </div>
-            </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="amount">Amount (USD)</Label>
+                    <Input
+                      id="amount"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Available: ${walletBalance.toFixed(2)} · Minimum $10
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="details">Account details</Label>
+                    <Input
+                      id="details"
+                      placeholder={
+                        method === "usdt" ? "Wallet address" : "Email or account number"
+                      }
+                      value={details}
+                      onChange={(e) => setDetails(e.target.value)}
+                    />
+                  </div>
+                </div>
 
-            <Button
-              className="w-full sm:w-auto"
-              onClick={() => {
-                if (!amount || Number(amount) < 10) {
-                  toast.error("Minimum withdrawal is $10");
-                  return;
-                }
-                toast.success("Withdrawal request submitted");
-                setAmount("");
-                setDetails("");
-              }}
-            >
-              Request withdrawal
-            </Button>
+                <Button
+                  className="w-full sm:w-auto"
+                  onClick={() => {
+                    if (!amount || Number(amount) < 10) {
+                      toast.error("Minimum withdrawal is $10");
+                      return;
+                    }
+                    if (Number(amount) > walletBalance) {
+                      toast.error("Amount exceeds available balance");
+                      return;
+                    }
+                    toast.success("Withdrawal request submitted");
+                    setAmount("");
+                    setDetails("");
+                  }}
+                >
+                  Request withdrawal
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -121,8 +211,8 @@ export default function WithdrawPage() {
             <CardTitle className="text-base">Good to know</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>Gold and Platinum members receive instant PayPal and USDT payouts.</p>
-            <p>Bank transfers are aggregated weekly and typically settle in 2–5 business days.</p>
+            <p>Platinum and Diamond members receive instant PayPal and USDT payouts with no completion requirement.</p>
+            <p>Lower tiers must complete a minimum number of surveys before withdrawals unlock.</p>
             <p>Contact support if a payout has not arrived within its stated window.</p>
           </CardContent>
         </Card>
