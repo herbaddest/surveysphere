@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
-import { Bell, Search } from "lucide-react";
-import Link from "next/link";
+import { Search } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
+import { TopbarStatus } from "@/components/dashboard/topbar-status";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = {
   title: "Dashboard — SurveySphere",
@@ -29,17 +27,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               />
             </div>
             <div className="ml-auto flex items-center gap-2">
-              <Button asChild variant="ghost" size="icon" className="relative">
-                <Link href="/dashboard/notifications" aria-label="Notifications">
-                  <Bell className="h-4 w-4" />
-                  <span className="absolute right-1.5 top-1.5 grid h-4 w-4 place-items-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
-                    3
-                  </span>
-                </Link>
-              </Button>
-              <Badge variant="secondary" className="hidden bg-primary/15 text-accent ring-1 ring-inset ring-primary/30 md:inline-flex">
-                Gold member
-              </Badge>
+              <TopbarStatus />
             </div>
           </header>
           <main className="flex-1 p-4 sm:p-6 lg:p-8">
