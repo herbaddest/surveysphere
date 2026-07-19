@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AuthShell } from "@/components/auth/auth-shell";
@@ -21,9 +21,11 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [agree, setAgree] = useState(false);
   const [country, setCountry] = useState("");
+  const prefilledReferral = searchParams.get("ref") ?? "";
 
   return (
     <AuthShell
@@ -134,7 +136,12 @@ export default function RegisterPage() {
           <Label htmlFor="referral">
             Referral code <span className="text-muted-foreground">(optional)</span>
           </Label>
-          <Input id="referral" name="referral" placeholder="e.g. ANYA-2026" />
+          <Input
+            id="referral"
+            name="referral"
+            placeholder="e.g. ANYA-2026"
+            defaultValue={prefilledReferral}
+          />
         </div>
         <label className="flex items-start gap-2 text-sm text-muted-foreground">
           <Checkbox
@@ -162,4 +169,3 @@ export default function RegisterPage() {
     </AuthShell>
   );
 }
-

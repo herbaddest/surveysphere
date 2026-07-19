@@ -14,6 +14,7 @@ export function TopbarStatus() {
   useEffect(() => {
     const supabase = createClient();
     let userId: string | null = null;
+    let cancelled = false;
 
     async function refreshUnreadCount(uid: string) {
       const { count } = await supabase
@@ -21,14 +22,14 @@ export function TopbarStatus() {
         .select("id", { count: "exact", head: true })
         .eq("user_id", uid)
         .eq("read", false);
-      setUnread(count ?? 0);
+      if (!cancelled) setUnread(count ?? 0);
     }
 
     async function init() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || cancelled) return;
       userId = user.id;
 
       const { data: profile } = await supabase
@@ -36,13 +37,21 @@ export function TopbarStatus() {
         .select("membership")
         .eq("id", user.id)
         .single();
-      setMembership(profile?.membership ?? null);
+      if (!cancelled) setMembership(profile?.membership ?? null);
 
       await refreshUnreadCount(user.id);
+      if (cancelled) return;
 
-      // Stay live: any insert/update on this user's notifications recomputes the count
+      // Avoid double-subscribing to the same channel (React Strict Mode
+      // invokes effects twice in dev)
+      const channelName = `notifications-badge-${user.id}`;
+      const existing = supabase.getChannels().find((c) => c.topic === `realtime:${channelName}`);
+      if (existing) {
+        supabase.removeChannel(existing);
+      }
+
       supabase
-        .channel("notifications-badge")
+        .channel(channelName)
         .on(
           "postgres_changes",
           {
@@ -61,7 +70,14 @@ export function TopbarStatus() {
     init();
 
     return () => {
-      supabase.removeAllChannels();
+      cancelled = true;
+      if (userId) {
+        const channelName = `notifications-badge-${userId}`;
+        const existing = supabase
+          .getChannels()
+          .find((c) => c.topic === `realtime:${channelName}`);
+        if (existing) supabase.removeChannel(existing);
+      }
     };
   }, []);
 
